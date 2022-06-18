@@ -1,13 +1,23 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-
 class Author(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    rating = models.IntegerField(default=1)
+    rating = models.IntegerField(default=0)
 
-    def update_rating(self, new_rating):
-        self.rating = new_rating
+    def update_rating(self):
+        post_ratings = Post.objects.filter(author__user = self.user).values("rating")
+        rating = 0
+        for pr in post_ratings:
+            rating += pr["rating"]*3
+        com_ratings = Comment.objects.filter(post__author__user = self.user).values("rating")
+        for cr in com_ratings:
+            rating += cr["rating"]
+        com_in_art = Comment.objects.filter(user = self.user).values("rating")
+        for ciar in com_in_art:
+            rating += ciar["rating"]
+
+        self.rating = rating
         self.save()
 
 
@@ -21,6 +31,8 @@ TYPES = [
     (news, 'Новость'),
     (article, 'Статья')
 ]
+
+
 class Post(models.Model):
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     position = models.CharField(max_length=1, choices=TYPES)
@@ -45,6 +57,7 @@ class Post(models.Model):
 class PostCategory(models.Model):
     post = models.ForeignKey('Category', on_delete=models.CASCADE)
     category = models.ForeignKey('Post', on_delete=models.CASCADE)
+
 
 class Comment(models.Model):
     post = models.ForeignKey('Post', on_delete=models.CASCADE)
